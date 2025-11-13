@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Categoria {
+  id        String    @id @default(uuid()) @db.VarChar(36)
+  nome      String    @db.VarChar(30)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  produtos  Produto[]
+
+  @@map("categorias")
+}
+
+model Produto {
+  sku            String          @id
+  codigo         Int
+  idCategoria    String          @db.VarChar(36)
+  nome           String          @db.VarChar(120)
+  descricao      String?
+  foto           String?
+  preco          Decimal         @db.Decimal(11, 2)
+  estoque        Decimal         @default(0) @db.Decimal(13, 4)
+  pctoferta      Decimal         @default(0) @db.Decimal(11, 2)
+  qtdvendas      Int             @default(0)
+  createdAt      DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime        @default(now()) @updatedAt @db.Timestamp(6)
+  categoria      Categoria       @relation(fields: [idCategoria], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  produtosPedido ProdutoPedido[]
+
+  @@index([idCategoria], map: "idx_produtos_categoria")
+  @@map("produtos")
+}
+
+model Cliente {
+  id             String   @id @default(uuid()) @db.VarChar(36)
+  tipoPessoa     String   @db.Char(2)
+  cpf            String?  @db.VarChar(11)
+  cnpj           String?  @db.VarChar(14)
+  nome           String   @db.VarChar(60)
+  ie             String?  @db.VarChar(14)
+  razaoSocial    String?  @db.VarChar(60)
+  dataNascimento DateTime @db.Date
+  sexo           String   @db.Char(1)
+  email          String   @unique
+  telefone       String   @db.VarChar(14)
+  senha          String
+  createdAt      DateTime @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  pedidos        Pedido[]
+
+  @@map("clientes")
+}
+
+model Pedido {
+  id               String            @id @default(uuid()) @db.VarChar(36)
+  idCliente        String            @db.VarChar(36)
+  valorBruto       Decimal           @db.Decimal(11, 2)
+  valorFrete       Decimal           @db.Decimal(11, 2)
+  valorDesconto    Decimal           @db.Decimal(11, 2)
+  valorLiquido     Decimal           @db.Decimal(11, 2)
+  status           String            @db.Char(1)
+  dataEntrega      DateTime          @db.Date
+  createdAt        DateTime          @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime          @default(now()) @updatedAt @db.Timestamp(6)
+  enderecosEntrega EnderecoEntrega[]
+  pagamentos       Pagamento[]
+  cliente          Cliente           @relation(fields: [idCliente], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  produtos         ProdutoPedido[]
+
+  @@index([idCliente], map: "idx_pedidos_cliente")
+  @@map("pedidos")
+}
+
+model ProdutoPedido {
+  id            String   @id @default(uuid()) @db.VarChar(36)
+  idPedido      String   @db.VarChar(36)
+  skuProduto    String
+  quantidade    Decimal  @db.Decimal(11, 2)
+  valorUnitario Decimal  @db.Decimal(11, 2)
+  valorBruto    Decimal  @db.Decimal(11, 2)
+  valorFrete    Decimal  @db.Decimal(11, 2)
+  valorDesconto Decimal  @db.Decimal(11, 2)
+  valorLiquido  Decimal  @db.Decimal(11, 2)
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  pedido        Pedido   @relation(fields: [idPedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produto       Produto  @relation(fields: [skuProduto], references: [sku], onDelete: NoAction)
+
+  @@index([idPedido], map: "idx_produtos_pedido_pedido")
+  @@map("produtosPedido")
+}
+
+model EnderecoEntrega {
+  id               String   @id @default(uuid()) @db.VarChar(36)
+  idPedido         String   @db.VarChar(36)
+  nomeRemetente    String   @db.VarChar(120)
+  cep              String   @db.Char(8)
+  logradouro       String   @db.VarChar(60)
+  numero           String   @db.VarChar(10)
+  complemento      String?  @db.VarChar(60)
+  bairro           String   @db.VarChar(60)
+  codigoIbgeCidade String   @db.Char(7)
+  codigoIbgeUF     String   @db.Char(2)
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  pedido           Pedido   @relation(fields: [idPedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([idPedido], map: "idx_enderecos_entrega_pedido")
+  @@map("enderecosEntrega")
+}
+
+model Pagamento {
+  id             String   @id @default(uuid())
+  idPedido       String   @db.VarChar(36)
+  formaPagamento String   @db.VarChar(1)
+  numeroParcelas Int      @db.SmallInt
+  valorParcela   Decimal  @db.Decimal(11, 2)
+  valorTotal     Decimal  @db.Decimal(11, 2)
+  boleto         String?  @db.VarChar(48)
+  pix            String?
+  tid            String?
+  createdAt      DateTime @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  pedido         Pedido   @relation(fields: [idPedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([idPedido], map: "idx_pagamentos_pedido")
+  @@map("pagamentos")
+}
